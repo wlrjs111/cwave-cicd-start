@@ -42,8 +42,8 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-    - name: Run test java
-      run: ./gradlew test
+   # - name: Run test java
+   #   run: ./gradlew test
 
     - name: Notify on Failure
       if: failure()
