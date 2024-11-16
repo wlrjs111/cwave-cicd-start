@@ -1,4 +1,4 @@
-name: istory ci/cd pipeline
+name: istory ci/cd pipeline2
 
 permissions:
   contents: read
