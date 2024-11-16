@@ -34,68 +34,15 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-     steps:
-    #   - name: Source Code Checkout
-    #     uses: actions/checkout@v4 
-
-    #   - name: Set up JDK 17
-    #     uses: actions/setup-java@v4
-    #     with:
-    #       java-version: '17'
-    #       distribution: 'temurin'
-          
-    #   # - name: Run test java
-    #   #   run: ./gradlew test
-
-    #   - name: Notify on Failure
-    #     if: failure()
-    #     run: |
-    #       echo "Tests failed! Pipeline will be stopped."
-    #       exit 1
-
-    #   - name: Upload Test Report
-    #     if: always()
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: test-report
-    #       path: |                    # 여러 경로 지정
-    #         **/build/reports/tests/test/
-    #         **/build/test-results/test/
-    #       retention-days: 30 
-
-        - name: Generate Basic Info in Markdown
-          run: |
-            echo "## 워크플로우 실행 정보 요약" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "* 실행 담당자: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-            echo "* 실행 이벤트: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-            echo "* 실행 저장소: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
-            echo "* 실행 브랜치: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
- 
-    #   - name: Run Checkstyle
-    #     run: |
-    #       mkdir -p build/reports/checkstyle
-    #       ./gradlew checkstyleMain checkstyleTest --info
-    #       ls -la build/reports/checkstyle || true
-
-    #   - name: Upload Checkstyle results
-    #     if: always()
-    #     uses: actions/upload-artifact@v4
-    #     with:
-    #       name: checkstyle-report
-    #       path: build/reports/checkstyle/
-    #       retention-days: 14
-
-    #   - name: Generate list using Markdown
-    #     run: |
-    #       echo "## 코드 스타일 분석결과" >> $GITHUB_STEP_SUMMARY
-    #       echo "" >> $GITHUB_STEP_SUMMARY
-    #       if [ -f build/reports/checkstyle/main.xml ]; then # 소스분석결과 존재시
-    #         echo "### 소스분석결과" >> $GITHUB_STEP_SUMMARY
-    #         echo '```' >> $GITHUB_STEP_SUMMARY
-    #         cat build/reports/checkstyle/main.xml >> $GITHUB_STEP_SUMMARY
-    #         echo '```' >> $GITHUB_STEP_SUMMARY
-    #       fi
+    steps:
+      - name: Generate Basic Info in Markdown
+        run: |
+          echo "## 워크플로우 실행 정보 요약" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "* 실행 담당자: ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "* 실행 이벤트: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "* 실행 저장소: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "* 실행 브랜치: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
