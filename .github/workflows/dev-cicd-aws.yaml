@@ -1,10 +1,10 @@
-name: istory ci/cd dev pipeline
+ name: istory ci/cd pipeline
 
 on:
   push:
-    branches: [ "develop"]
+    branches: [ "develop" ]
   pull_request:
-    branches: [ "develop"]
+    branches: [ "develop" ]
 jobs:
   verify-pipeline:
     environment: runner
@@ -28,3 +28,30 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
+    steps:
+    - name: Source Code Checkout
+      uses: actions/checkout@v4 
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    - name: Run test java
+      run: ./gradlew test
+
+    - name: Notify on Failure
+      if: failure()
+      run: |
+        echo "Tests failed! Pipeline will be stopped."
+        exit 1
+
+    - name: 테스트 결과를 STEP Summary에 업로드
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-report
+        path: |                    # 여러 경로 지정
+          **/build/reports/tests/test/
+          **/build/test-results/test/
+        retention-days: 30 
