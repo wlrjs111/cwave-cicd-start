@@ -103,8 +103,8 @@ jobs:
           languages: java
           queries: security-and-quality
 
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+      - name: Build project with Gradle  # Autobuild를 수동 빌드로 대체
+        run: ./gradlew build
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
