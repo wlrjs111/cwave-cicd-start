@@ -82,7 +82,7 @@ jobs:
           spring:
             datasource:
               url: ${{ secrets.DATABASE_URL }}
-              username: ${{ secrets.MYSQL_USERNAME }}
+              username: ${{ secrets.MYSQL_USER }}
               password: ${{ secrets.MYSQL_PASSWORD }}
               driver-class-name: com.mysql.cj.jdbc.Driver
             jpa:
