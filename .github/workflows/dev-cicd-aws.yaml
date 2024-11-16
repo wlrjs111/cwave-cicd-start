@@ -52,16 +52,13 @@ jobs:
         run: |
           echo "# 파이프라인 리포트" >> $GITHUB_STEP_SUMMARY
           echo "## 보안 경고" >> $GITHUB_STEP_SUMMARY
-          
           if [ -f sarif-results/java.sarif ]; then
             if jq -e '.runs[0].results' sarif-results/java.sarif > /dev/null 2>&1; then
               ALERTS=$(jq '.runs[].results | length' sarif-results/java.sarif)
               echo "${ALERTS}개의 잠재적인 보안 이슈가 발견 되었습니다." >> $GITHUB_STEP_SUMMARY
-              
               echo "### 보안 경고 상세" >> $GITHUB_STEP_SUMMARY
               echo "| Severity | Rule | Description | File |" >> $GITHUB_STEP_SUMMARY
               echo "|----------|------|-------------|------|" >> $GITHUB_STEP_SUMMARY
-              
               jq -r '.runs[].results[] | "| \(.properties.security_severity // "medium") | \(.ruleId // "N/A") | \(.message.text // "N/A") | \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine) |"' sarif-results/java.sarif >> $GITHUB_STEP_SUMMARY || true
             else
               echo "No results found in SARIF file." >> $GITHUB_STEP_SUMMARY
@@ -72,6 +69,7 @@ jobs:
   build-and-upload:
     runs-on: ubuntu-latest
     environment: dev
+    
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
@@ -81,8 +79,8 @@ jobs:
           cat > src/main/resources/application.yml << EOF
           spring:
             datasource:
-              url: ${{ secrets.DATABASE_URL }}
-              username: ${{ secrets.MYSQL_USER }}
+              url: ${{ secrets.DATABASE_URL }} # 예jdbc:mysql://localhost:3306/istory
+              username: ${{ secrets.MYSQL_USERNAME }}
               password: ${{ secrets.MYSQL_PASSWORD }}
               driver-class-name: com.mysql.cj.jdbc.Driver
             jpa:
@@ -112,18 +110,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-2
 
-      - name: JDK 17 설치
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           
-      - name: 실행가능한 JAR 빌드
+      - name: Build with Gradle
         run: |
           chmod +x gradlew
           ./gradlew bootJar
           
-      - name: 아티패트 이름 만들기
+      - name: Generate artifact name with timestamp
         run: |
           echo "ARTIFACT_NAME=springboot-$(date +'%Y%m%d-%H%M%S').jar" >> $GITHUB_ENV
 
@@ -133,9 +131,48 @@ jobs:
           cp build/libs/*.jar deployment/${{ env.ARTIFACT_NAME }}
           cp appspec.yml deployment/
           cp -r scripts deployment/
-          cd deployment && zip -r ../deploy.zip .          
-
+          cd deployment && zip -r ../deploy.zip .
+          
       - name: Upload to S3
         run: |
           aws s3 cp deployment/${{ env.ARTIFACT_NAME }} s3://${{ secrets.AWS_S3_BUCKET }}/artifacts/
           aws s3 cp deploy.zip s3://${{ secrets.AWS_S3_BUCKET }}/deploy/deploy.zip
+          
+      - name: Generate deployment summary
+        run: |
+          echo "## 📦 배포 정보" >> $GITHUB_STEP_SUMMARY
+          echo "| 항목 | 내용 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎯 버킷 | \`${{ secrets.AWS_S3_BUCKET }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📄 파일명 | \`${{ env.ARTIFACT_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🕒 배포 시각 | $(date) |" >> $GITHUB_STEP_SUMMARY
+      - name: Check and stop existing deployments
+        run: |
+          DEPLOYMENTS=$(aws deploy list-deployments \
+            --application-name istory-app \
+            --deployment-group-name istory-deploy-group \
+            --include-only-statuses "InProgress" \
+            --query 'deployments[]' \
+            --output text)
+          
+          if [ ! -z "$DEPLOYMENTS" ]; then
+            for deployment in $DEPLOYMENTS; do
+              echo "Stopping deployment $deployment"
+              aws deploy stop-deployment --deployment-id $deployment
+            done
+            sleep 10
+          fi
+      - name: Deploy to EC2 via CodeDeploy
+        id: deploy
+        run: |
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
+            --application-name istory-app \
+            --deployment-group-name istory-deploy-group \
+            --s3-location bucket=${{ secrets.AWS_S3_BUCKET }},key=deploy/deploy.zip,bundleType=zip \
+            --output text \
+            --query 'deploymentId')
+          echo "deployment_id=${DEPLOYMENT_ID}" >> $GITHUB_OUTPUT
+
+      - name: Wait for deployment to complete
+        run: |
+          aws deploy wait deployment-successful --deployment-id ${{ steps.deploy.outputs.deployment_id }}
